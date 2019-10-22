@@ -17,7 +17,7 @@ jupyter:
 This notebook converts the original XML file format into plain text with markup inserted in it's proper place surrounded with tags delimeted with '{{' and '}}
 
 **To Do:**
-
+* 328.04.txt seems to have less lines once annotated - missing some extra `\n` or something else?
 
 ```python
 import xml.etree.ElementTree as ET
@@ -32,7 +32,14 @@ os.getcwd()
 
 ```python
 input_path = Path('../../training-PHI-Gold-Set1')
-output_path = Path('../data/converted')
+ann_path = Path('../data/annotated')
+text_path = Path('../data/orig_text')
+
+if not os.path.exists(ann_path):
+    os.makedirs(ann_path)
+    
+if not os.path.exists(text_path):
+    os.makedirs(text_path)
 ```
 
 ```python
@@ -61,14 +68,16 @@ def insert_tags(text, tag, tag_type, start, end):
 ```
 
 ```python
-if not os.path.exists(output_path):
-    os.makedirs(output_path)
-new_file = ''
 for file in input_path.glob('*.xml'):
     with open(file) as f:
         tree = ET.parse(f)
         root = tree.getroot()
         note = root[0].text
+        # save original version of note
+        new_file = os.path.splitext(os.path.basename(file))[0] + '.txt'
+        with open(text_path / new_file, 'w') as o:
+            o.write(unencode(note))
+        
         offset = 0
         for c in root.iter('TAGS'):
             for child in c:
@@ -79,12 +88,9 @@ for file in input_path.glob('*.xml'):
                                                    int(child.attrib['end']) + offset)
                 offset += new_offset
         note = unencode(note)
-        
-        new_file = os.path.splitext(os.path.basename(file))[0] + '.txt'
-        print('output_path / new_file: ', output_path / new_file)
-        with open(output_path / new_file, 'w') as o:
+        # save annotated version of note text
+        with open(ann_path / new_file, 'w') as o:
             o.write(note)
-        break
 ```
 
 ```python
