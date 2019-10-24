@@ -16,9 +16,6 @@ jupyter:
 
 This notebook converts the original XML file format into plain text with markup inserted in it's proper place surrounded with tags delimeted with '{{' and '}}
 
-**To Do:**
-* 328.04.txt seems to have less lines once annotated - missing some extra `\n` or something else?
-
 ```python
 import xml.etree.ElementTree as ET
 import os
@@ -31,9 +28,9 @@ os.getcwd()
 ```
 
 ```python
-input_path = Path('../../training-PHI-Gold-Set1')
-ann_path = Path('../data/annotated')
-text_path = Path('../data/orig_text')
+input_path = Path('../../training-PHI-Gold-Set1-test')
+ann_path = Path('../data/annotated_test')
+text_path = Path('../data/orig_test')
 
 if not os.path.exists(ann_path):
     os.makedirs(ann_path)
