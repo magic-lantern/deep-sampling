@@ -22,9 +22,11 @@ Processes:
 
 
 ```python
-from fastai.text import *
-import spacy
-nlp = spacy.load("en_core_web_sm")
+from pathlib import Path
+import pandas as pd
+import os
+import functools
+import operator
 import nltk
 import seaborn as sns
 sns.set()
