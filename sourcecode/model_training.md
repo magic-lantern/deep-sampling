@@ -262,6 +262,14 @@ learn.load('seq2seq_rnn')
 
 ### Check how sequence genration is working so far
 
+This seems to be a pretty poor prediction technique, though could be due to not enough model training.
+
+Alternative techniques:
+
+* Beam search - https://en.wikipedia.org/wiki/Beam_search
+* top-k (right now sesarch is essential top-1; however most likely next word gets stuck and doesn't find best word for sequences of words.
+* Nucleus  Sampling  - modified top-k approach
+
 ```python
 def get_predictions(learn, ds_type=DatasetType.Valid):
     learn.model.eval()
