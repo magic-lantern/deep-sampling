@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.2.1
+      jupytext_version: 1.2.4
   kernelspec:
     display_name: Python 3
     language: python
@@ -36,6 +36,15 @@ import fasttext as ft
 ```
 
 ```python
+# to help with getting consistent results
+seed = 42
+torch.manual_seed(seed)
+np.random.seed(seed)
+#torch.backends.cudnn.deterministic = True
+#torch.backends.cudnn.benchmark = False
+```
+
+```python
 path = Path('../data')
 in_data_file = path/'processed_data.csv'
 databunch_file = path/'databunch.pkl'
@@ -53,9 +62,17 @@ df.head()
 ```
 
 ```python
+df.tail()
+```
+
+```python
 src = (Seq2SeqTextList.from_df(df, path = path, cols='annotated_text')
-       .split_by_rand_pct(seed=42)
+       .split_by_rand_pct(seed=seed)
        .label_from_df(cols='orig_text', label_cls=TextList))
+```
+
+```python
+Seq2SeqTextList.
 ```
 
 ```python
@@ -99,23 +116,40 @@ def create_emb(vecs, itos, em_sz=300, mult=1.):
 ```
 
 ```python
-emb_enc = create_emb(en_vecs, data.x.vocab.itos)
-emb_dec = create_emb(en_vecs, data.y.vocab.itos)
-del en_vecs # release memory from vector
+len(data.x.vocab.itos)
+```
+
+```python
+len(data.y.vocab.itos)
+```
+
+```python
+len(data.vocab.stoi)
+```
+
+```python
+len(data.vocab.itos)
+```
+
+```python
+emb_enc = None
+emb_dec = None
+if not os.path.exists(path/'emb_enc.pth'):
+    # creating embedding takes several minutes 5? maybe more
+    print('Creating embedding')
+    emb_enc = create_emb(en_vecs, data.x.vocab.itos)
+    emb_dec = create_emb(en_vecs, data.y.vocab.itos)
+    del en_vecs # release memory from vector
+    torch.save(emb_enc, path/'emb_enc.pth')
+    torch.save(emb_dec, path/'emb_dec.pth')
+else:
+    print('Loading embedding')
+    emb_enc = torch.load(path/'emb_enc.pth')
+    emb_dec = torch.load(path/'emb_dec.pth')
 ```
 
 ```python
 emb_enc.weight.size(), emb_dec.weight.size()
-```
-
-```python
-torch.save(emb_enc, path/'emb_enc.pth')
-torch.save(emb_dec, path/'emb_dec.pth')
-```
-
-```python
-emb_enc = torch.load(path/'emb_enc.pth')
-emb_dec = torch.load(path/'emb_dec.pth')
 ```
 
 ```python
@@ -225,9 +259,21 @@ def seq2seq_acc(out, targ, pad_idx=1):
 ## Now train the Seq2seq RNN
 
 ```python
-#learn = Learner(data, rnn, loss_func=seq2seq_loss)
-learn = Learner(data, rnn, loss_func=seq2seq_loss, metrics=seq2seq_acc)
+learn = None
+rnn = None
+def resetup():
+    global learn
+    global rnn
+    del learn
+    del rnn
+    torch.cuda.empty_cache()
+    gc.collect()
+    rnn = Seq2SeqRNN(emb_enc, emb_dec, 256, max(xb.shape[1], yb.shape[1]))
+    learn = Learner(data, rnn, loss_func=seq2seq_loss, metrics=seq2seq_acc)
+```
 
+```python
+resetup()
 ```
 
 ```python
@@ -238,18 +284,55 @@ learn.lr_find()
 learn.recorder.plot()
 ```
 
+### Work to determine optimal number of epochs
+
 ```python
-learn.fit_one_cycle(5, 1e-2)
+# tried 3 sets of 5 at 1e-2
+# resetup()
+# learn.fit_one_cycle(5, 1e-2) # after 5, 62
+# learn.fit_one_cycle(5, 1e-2) # second group, 72
+# learn.fit_one_cycle(5, 1e-2) # third group, 69 - 69
 ```
 
 ```python
-learn = Learner(data, rnn, loss_func=seq2seq_loss, metrics=seq2seq_acc)
-learn.fit_one_cycle(5, 1e-2)
+# resetup()
+# learn.fit_one_cycle(15, 1e-2) # after 46 - 78, peak reached around epoch 7, may evetually get better... perhaps more epochs
 ```
 
 ```python
-learn = Learner(data, rnn, loss_func=seq2seq_loss, metrics=seq2seq_acc)
-learn.fit_one_cycle(5, 5e-3)
+# not as good as 15 consectutive
+# resetup()
+# learn.fit_one_cycle(5, 5e-3) # after 5, 67
+# learn.fit_one_cycle(5, 5e-3)
+# learn.fit_one_cycle(5, 5e-3) # ends at 80
+```
+
+```python
+#resetup()
+#learn.fit_one_cycle(15, 5e-3) # 33 - 83
+```
+
+```python
+# additional 5 after 5 results in similar, but not better performance
+# learn.fit_one_cycle(5, 5e-3)
+```
+
+```python
+# resetup()
+# learn.fit_one_cycle(20, 5e-3) # 26 - 85
+```
+
+```python
+resetup()
+learn.fit_one_cycle(25, 5e-3) # 23 - 86
+```
+
+```python
+learn.lr_find()
+```
+
+```python
+learn.recorder.plot()
 ```
 
 ```python
