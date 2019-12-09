@@ -28,9 +28,14 @@ os.getcwd()
 ```
 
 ```python
+# small sample for easier testing and manual validation
 input_path = Path('../../training-PHI-Gold-Set1-test')
 ann_path = Path('../data/annotated_test')
 text_path = Path('../data/orig_test')
+# full test data set
+input_path = Path('../../training-PHI-Gold-Set1')
+ann_path = Path('../data/annotated')
+text_path = Path('../data/orig')
 
 if not os.path.exists(ann_path):
     os.makedirs(ann_path)
@@ -49,18 +54,51 @@ def unencode(note):
 ```python
 def insert_tags(text, tag, tag_type, start, end):
     TAG_START = '{{' # double curly braces do not appear in original text
-    TAG_END   = '}}'
+    TAG_START1 = TAG_START
+    TAG_START2 = TAG_START
+    TAG_END   = '}} ' # need to include space here as without it tokenizer doesn't properly split
     LABEL_END = '/'
     TAG_SEPARATOR = ':'
     if tag == tag_type:
         combined = tag
     else:
         combined = tag + TAG_SEPARATOR + tag_type
-    offset = len(TAG_START + combined + TAG_END + TAG_START + LABEL_END + combined + TAG_END)
+
+    # need to check and add space before tag if doesnt exist already (if not beginning of line)
+    if (not text[int(start) - 1].isspace()):
+        TAG_START1 = ' ' + TAG_START1
+#     # need to check and add space after tag if doesnt exist already (if not end of line)
+#     if (not text[int(end)].isspace()):
+#         print('end char:', text[int(end)])
+#         print('end position:', int(end))
+#         print('text:', text[int(end) - 10:int(end) + 10])
+#         print('endtext------------------')
+    
+    offset = len(TAG_START1 + combined + TAG_END + TAG_START2 + LABEL_END + combined + TAG_END)
     return ((text[:int(start)] + 
-            TAG_START + combined + TAG_END +
+            TAG_START1 + combined + TAG_END +
             text[int(start):int(end)] + 
-            TAG_START + LABEL_END + combined + TAG_END +
+            TAG_START2 + LABEL_END + combined + TAG_END +
+            text[int(end):]), offset)
+```
+
+```python
+def insert_space(text, start, end):
+    TEXT_START = ''
+    TEXT_END = ''
+    # need to check and add space before tag if doesnt exist already (if not beginning of line)
+    if (not text[int(start) - 1].isspace()):
+        TEXT_START = ' '
+#     # need to check and add space after tag if doesnt exist already (if not end of line)
+#     if (not text[int(end)].isspace()):
+#         print('end char:', text[int(end)])
+#         print('end position:', int(end))
+#         print('text:', text[int(end) - 10:int(end) + 10])
+#         print('endtext------------------')
+    
+    offset = len(TEXT_START + TEXT_END)
+    return ((text[:int(start)] + 
+            TEXT_START +  text[int(start):int(end)] + TEXT_END +
             text[int(end):]), offset)
 ```
 
@@ -70,19 +108,30 @@ for file in input_path.glob('*.xml'):
         tree = ET.parse(f)
         root = tree.getroot()
         note = root[0].text
+        
+        adj_note = note
+        offset = 0
+        for c in root.iter('TAGS'):
+            for child in c:
+                adj_note, new_offset = insert_space(adj_note,
+                                               int(child.attrib['start']) + offset,
+                                               int(child.attrib['end']) + offset)
+                offset += new_offset
+        adj_note = unencode(adj_note)
+        
         # save original version of note
         new_file = os.path.splitext(os.path.basename(file))[0] + '.txt'
         with open(text_path / new_file, 'w') as o:
-            o.write(unencode(note))
+            o.write(adj_note)
         
         offset = 0
         for c in root.iter('TAGS'):
             for child in c:
                 note, new_offset = insert_tags(note,
-                                                   child.tag,
-                                                   child.attrib['TYPE'],
-                                                   int(child.attrib['start']) + offset,
-                                                   int(child.attrib['end']) + offset)
+                                               child.tag,
+                                               child.attrib['TYPE'],
+                                               int(child.attrib['start']) + offset,
+                                               int(child.attrib['end']) + offset)
                 offset += new_offset
         note = unencode(note)
         # save annotated version of note text
@@ -94,7 +143,7 @@ for file in input_path.glob('*.xml'):
 os.path.splitext(os.path.basename(file))
 ```
 
-## Rest of notebook is just looking at 1 single file and checking processing steps
+## Rest of this notebook is just looking at 1 single file and checking processing steps
 
 ```python
 with open('220-01.xml') as f:

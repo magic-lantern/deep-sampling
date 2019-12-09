@@ -34,14 +34,18 @@ sns.set()
 
 ```python
 output_path = Path('../data')
+# small subset of notes for testing purposes
 ann_path = Path('../data/annotated_test')
 text_path = Path('../data/orig_test')
+# full data set
 ann_path = Path('../data/annotated')
 text_path = Path('../data/orig')
 paths = [ann_path, text_path]
 ```
 
 Need to do the same for both annotated and original text.
+
+**Note:** If you get the error *"InvalidIndexError: Reindexing only valid with uniquely valued Index objects"* this means that the annotated text doesn't match the original text. This is likely caused by a missing file in one or the other directories.
 
 ```python
 # need to load all text from ann_path and from text_path and split into sentences/lines
@@ -68,6 +72,8 @@ for p in paths:
         temp_df = pd.DataFrame(list(zip([k]*len(ann[k]), ann[k])),
                           columns = cols)
         tdf = tdf.append(temp_df)
+    # uncomment this line if you don't care if original and annotated text are all matched pairs
+    #tdf.reset_index(inplace=True, drop=True)
     df = pd.concat([df, tdf], axis=1)
     
     print('Completed reading files from ', p)

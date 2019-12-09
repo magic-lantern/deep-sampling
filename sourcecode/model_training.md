@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.2.4
+      jupytext_version: 1.2.1
   kernelspec:
     display_name: Python 3
     language: python
@@ -72,10 +72,6 @@ src = (Seq2SeqTextList.from_df(df, path = path, cols='annotated_text')
 ```
 
 ```python
-Seq2SeqTextList.
-```
-
-```python
 len(src.train) + len(src.valid)
 ```
 
@@ -89,6 +85,14 @@ data.save(databunch_file)
 
 ```python
 data.show_batch()
+```
+
+```python
+data.show_batch() # prev new
+```
+
+```python
+data.show_batch() # original data
 ```
 
 ```python
