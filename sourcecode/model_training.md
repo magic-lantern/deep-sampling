@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.2.1
+      jupytext_version: 1.2.4
   kernelspec:
     display_name: Python 3
     language: python
@@ -42,6 +42,15 @@ torch.manual_seed(seed)
 np.random.seed(seed)
 #torch.backends.cudnn.deterministic = True
 #torch.backends.cudnn.benchmark = False
+
+# at batch_size 64, uses up to 50% of GPU.
+#                   uses about 7GGB of GPU RAM
+#                   epochs are about 35 sec each 
+# at batch_size 128, uses up to 75% of GPU
+#                    uses about 16GB of GPU RAM
+#                    epochs are about 20 sec each
+# while larger batch size trains faster, it appears to have lower overall accuracy from the same number of epochs
+batch_size = 64
 ```
 
 ```python
@@ -76,7 +85,7 @@ len(src.train) + len(src.valid)
 ```
 
 ```python
-data = src.databunch()
+data = src.databunch(bs=batch_size)
 ```
 
 ```python
@@ -88,14 +97,7 @@ data.show_batch()
 ```
 
 ```python
-data.show_batch() # prev new
-```
-
-```python
-data.show_batch() # original data
-```
-
-```python
+# this takes a minute or two to load
 en_vecs = ft.load_model(str((path/'cc.en.300.bin')))
 ```
 
@@ -241,7 +243,10 @@ rnn
 ```
 
 ```python
-h = rnn.encoder(64, xb.cpu())
+# is only using up to 50% of GPU
+# h = rnn.encoder(64, xb.cpu())
+# try this to see if GPU usage increases
+h = rnn.encoder(batch_size, xb.cpu())
 ```
 
 ```python
@@ -291,11 +296,16 @@ learn.recorder.plot()
 ### Work to determine optimal number of epochs
 
 ```python
-# tried 3 sets of 5 at 1e-2
 # resetup()
-# learn.fit_one_cycle(5, 1e-2) # after 5, 62
-# learn.fit_one_cycle(5, 1e-2) # second group, 72
-# learn.fit_one_cycle(5, 1e-2) # third group, 69 - 69
+# learn.fit_one_cycle(20, 5e-2) # swings from good (83) to bad (1) and back (unreliable) @ 128 batch size
+```
+
+```python
+#resetup()
+#learn.fit_one_cycle(5, 1e-2) # 51 - 63
+#learn.fit_one_cycle(10, 1e-2) # 47 - 77
+#learn.fit_one_cycle(20, 1e-2) # 42 - 74 (peak reached at 10, end is 65) @ 64 batch size
+#learn.fit_one_cycle(20, 1e-2) # 23 - 77 @ 128 batch size
 ```
 
 ```python
@@ -304,16 +314,28 @@ learn.recorder.plot()
 ```
 
 ```python
-# not as good as 15 consectutive
 # resetup()
-# learn.fit_one_cycle(5, 5e-3) # after 5, 67
-# learn.fit_one_cycle(5, 5e-3)
-# learn.fit_one_cycle(5, 5e-3) # ends at 80
+# learn.fit_one_cycle(5, 5e-3) # 47 - 74
+#learn.fit_one_cycle(10, 5e-3) # 26 - 81 @ 64 batch size
+#learn.fit_one_cycle(20, 5e-3) # 45 - 85 @ 64 batch size
+# learn.fit_one_cycle(25, 5e-3) # 32 - 87.6 @ 64 batch size
+#learn.fit_one_cycle(10, 5e-3) # 38 - 74 @ 128 batch size
+#learn.fit_one_cycle(20, 5e-3) # 19 - 84 @ 128 batch size
 ```
 
 ```python
-#resetup()
-#learn.fit_one_cycle(15, 5e-3) # 33 - 83
+resetup()
+# learn.fit_one_cycle(5, 1e-3) # 40 - 72
+# learn.fit_one_cycle(10, 1e-3) # 16 - 80 @ 64 batch size
+# learn.fit_one_cycle(20, 1e-3) # 17 - 86 @ 64 batch size
+learn.fit_one_cycle(25, 1e-3) # 17 - 87.9 @ 64 batch size
+# learn.fit_one_cycle(10, 1e-3) # 16 - 68 @ 128 batch size
+# learn.fit_one_cycle(20, 1e-3) # 16 - 83 @ 128 batch size
+```
+
+```python
+# resetup()
+# learn.fit_one_cycle(15, 5e-3) #
 ```
 
 ```python
@@ -327,8 +349,8 @@ learn.recorder.plot()
 ```
 
 ```python
-resetup()
-learn.fit_one_cycle(25, 5e-3) # 23 - 86
+# resetup()
+# learn.fit_one_cycle(25, 5e-3) # 23 - 86
 ```
 
 ```python
