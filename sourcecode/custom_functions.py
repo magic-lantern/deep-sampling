@@ -9,7 +9,7 @@ path = Path('../data')
 in_data_file = path/'processed_data.csv'
 databunch_file = path/'databunch.pkl'
 
-custom_batch_size = 64
+batch_size = 64
 seed = 42
 torch.manual_seed(seed)
 np.random.seed(seed)
@@ -116,7 +116,7 @@ def get_learner():
     emb_enc, emb_dec = get_emb(data)
     xb,yb = next(iter(data.valid_dl))
     rnn = Seq2SeqRNN(emb_enc, emb_dec, 256, max(xb.shape[1], yb.shape[1]))
-    h = rnn.encoder(custom_batch_size, xb.cpu())
+    h = rnn.encoder(batch_size, xb.cpu())
     learn = Learner(data, rnn, loss_func=seq2seq_loss, metrics=seq2seq_acc)
     return learn
 
@@ -125,4 +125,4 @@ def get_data():
     src = (Seq2SeqTextList.from_df(df, path = path, cols='annotated_text')
        .split_by_rand_pct(seed=seed)
        .label_from_df(cols='orig_text', label_cls=TextList))
-    return src.databunch()
+    return src.databunch(bs=batch_size)
