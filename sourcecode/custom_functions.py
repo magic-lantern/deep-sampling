@@ -126,3 +126,15 @@ def get_data():
        .split_by_rand_pct(seed=seed)
        .label_from_df(cols='orig_text', label_cls=TextList))
     return src.databunch(bs=batch_size)
+
+def get_predictions(learn, ds_type=DatasetType.Valid):
+    learn.model.eval()
+    inputs, targets, outputs = [],[],[]
+    with torch.no_grad():
+        for xb,yb in progress_bar(learn.dl(ds_type)):
+            out = learn.model(xb)
+            for x,y,z in zip(xb,yb,out):
+                inputs.append(learn.data.train_ds.x.reconstruct(x))
+                targets.append(learn.data.train_ds.y.reconstruct(y))
+                outputs.append(learn.data.train_ds.y.reconstruct(z.argmax(1)))
+    return inputs, targets, outputs
